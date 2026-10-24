@@ -1,0 +1,75 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r backend/requirements-dev.txt
+      - run: ruff check backend
+      - run: cd backend && python -m pytest -q
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: VERSION=${{ github.sha }} ./scripts/build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kanban-build
+          path: artifacts/*.tar.gz
+
+  package:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: kanban-build, path: artifacts }
+      - name: Распаковать артефакт в build/
+        run: mkdir build && tar -xzf artifacts/*.tar.gz -C build
+      - id: meta
+        run: |
+          IMG=ghcr.io/$(echo "${{ github.repository }}" | tr 'A-Z' 'a-z')
+          echo "image=$IMG" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image }}:${{ github.sha }}
+            ${{ steps.meta.outputs.image }}:latest
+
+  deploy:
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Деплой на Render и smoke-test
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+          APP_URL: ${{ secrets.APP_URL }}
+          IMAGE: ${{ needs.package.outputs.image }}:${{ github.sha }}
+        run: ./scripts/deploy.sh

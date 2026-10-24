@@ -1,0 +1,20 @@
+# Сначала ./scripts/build.sh (или просто ./scripts/run_local.sh)
+services:
+  app:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      DATABASE_URL: sqlite:////data/kanban.db   # локально SQLite в томе; на Render - Postgres
+    volumes: ["app-data:/data"]
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    ports: ["9090:9090"]
+    volumes: ["./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    depends_on: [app]
+  grafana:
+    image: grafana/grafana:11.4.0
+    ports: ["3000:3000"]
+    volumes: ["./grafana/provisioning:/etc/grafana/provisioning:ro"]
+    depends_on: [prometheus]
+volumes:
+  app-data:
