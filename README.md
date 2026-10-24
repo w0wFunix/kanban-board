@@ -83,7 +83,7 @@ grafana/provisioning/    автоподключение источника да�
 
 Весь процесс описан в файле [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml) и запускается автоматически при каждом `git push` в ветку `main`.
 
-![Схема процесса](docs/screenshots/21-build.png)
+![Схема процесса](docs/screenshots/21a-build.png)
 
 ### Стадии пайплайна
 
