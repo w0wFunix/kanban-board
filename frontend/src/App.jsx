@@ -72,7 +72,7 @@ export default function App() {
   return (
     <main>
       <header>
-        <h1>Доска задач</h1>
+        <h1>Панель задач</h1>
         <form onSubmit={add}>
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Новая задача" />
           <button>Добавить</button>
