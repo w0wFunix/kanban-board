@@ -97,7 +97,7 @@ async def count_visits(request: Request, call_next):
     return response
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health():
     try:
         with engine.connect() as conn:
